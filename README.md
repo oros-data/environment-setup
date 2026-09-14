@@ -235,25 +235,15 @@ Flags de host para o guest: `--skip-base-dx --docker --gh --herdr --agents LIST 
 
 ## Contribuidor — como alterar scripts com segurança
 
-Fonte de verdade do comportamento: `Install-WslDevEnv.ps1` (host) e `guest/bootstrap.sh` (guest). Docs em `README.md` / `AGENTS.md` / `SECURITY.md`. Não edite este repositório como se fosse data-ingestion.
+Fonte de verdade do comportamento: `Install-WslDevEnv.ps1` (host) e `guest/bootstrap.sh` (guest). Regras de idioma, quebras de linha, idempotência, segredos, allowlist de URLs e testes sem máquina de produção estão em `AGENTS.md` — leia antes de editar. Não trate este repositório como o monorepo data-ingestion.
 
-- **Idioma:** strings visíveis ao usuário em **pt-BR**; identificadores em inglês.
-- **Quebras de linha:** scripts Linux LF; PowerShell CRLF (veja `.gitattributes`).
-- **Idempotência:** edite só blocos marcados (`# --- wsl-dev-env begin:… ---` / `end:`). Reexecuções devem substituir, não empilhar duplicatas.
-- **Padrões seguros:** não desregistre distro sem `-ForceRecreate`; não crie conta com senha vazia; não ligue NOPASSWD sem `-PasswordlessSudo`; não instale firstmate.
-- **Segredos:** nunca commite senhas, tokens, kubeconfigs, `id_rsa*`, `*.pem`, `.env` real, cópias de `state.json`. O guia SSH só imprime linha `ssh-ed25519 …`.
-- **URLs:** não troque `curl \| sh` para outro host sem revisão explícita. Prefira pin/verificação quando for prático; recuse instaladores desconhecidos.
-- **Testes sem máquina de produção:** `bash -n guest/bootstrap.sh`; parse do `.ps1` (CI); releia flags. Não precisa de WSL de produção, cluster, nem conta GitHub real. Não rode `-ForceRecreate` em distro alheio.
-
-CI enxuto (`.github/workflows/ci.yml`): ShellCheck com severidade warning + parse do PowerShell. Dependabot só em GitHub Actions.
+CI (`.github/workflows/ci.yml`): ShellCheck com severidade warning + parse do PowerShell. Dependabot cobre só GitHub Actions.
 
 ## Notas de segurança (resumo operacional)
 
-- Distro **saudável** existente permanece. O script **não** faz `wsl --unregister` sem **`-ForceRecreate`**.
+Ver [Avisos de segurança](#avisos-de-segurança-leia-antes) para as regras principais (senha, chaves SSH, `-ForceRecreate`, sudo sem senha, `curl | sh`). Complementos:
+
 - Distro registrado mas quebrado falha com orientação; `-ForceRecreate` só se você aceitar perder dados.
-- Sem segredos na nuvem. A chave **privada** SSH nunca é exibida nem enviada; só a `.pub`.
-- Usuário + escolhas de recurso ficam em `%LOCALAPPDATA%\wsl-dev-env\state.json` para o reboot. Apague o arquivo se não quiser. **Senha não entra aí.**
-- Conta nova nasce com senha que você digitou e sudo **com** senha, salvo opt-in de NOPASSWD.
 - Relatar vulnerabilidades: `SECURITY.md` (aviso privado; não abra issue pública com exploit ou segredo).
 
 ## Solução de problemas
