@@ -2,9 +2,32 @@
 
 Bootstrap em PowerShell no Windows para um Ubuntu WSL2 enxuto, pronto para desenvolver.
 
-**English:** Windows-side guided WSL2 Ubuntu installer. Prompts, menus, errors and this README are in **Brazilian Portuguese**. Run from elevated 64-bit Windows PowerShell: `powershell -ExecutionPolicy Bypass -File .\Install-WslDevEnv.ps1`. See tables below for flags (`-NonInteractive`, `-InstallDocker`, `-InstallHerdr`, `-Agents`, …).
+**English:** Windows-side guided WSL2 Ubuntu installer. Prompts, menus, errors and this README are in **Brazilian Portuguese**. Run from elevated 64-bit Windows PowerShell:
+`powershell -ExecutionPolicy Bypass -File .\Install-WslDevEnv.ps1`.
+Audience sections below cover first install, flags (`-NonInteractive`, `-InstallDocker`, `-InstallHerdr`, `-Agents`, …), unattended exit codes (including **3010** reboot), and contributor rules.
 
 Inspirado nos hábitos de CLI do [Omarchy](https://omarchy.org/) (starship + zoxide, sem desktop), agora com **instalação guiada**: você escolhe Docker, `gh`, Herdr (atalhos Omarchy), CLIs de agentes e o guia de SSH do GitHub. A senha da conta Linux é **definida na instalação**.
+
+Este repositório é **só** o instalador WSL. Não é o monorepo data-ingestion, não instala firstmate e não liga ferramentas privadas do captain por padrão.
+
+## Para quem é este repositório
+
+| Público | Comece em |
+| --- | --- |
+| **Usuário final** (Windows, primeiro WSL) | [Avisos de segurança](#avisos-de-segurança-leia-antes) e [primeira instalação](#usuário-final--primeira-instalação-no-windows) |
+| **Power user** (reexecução, flags) | [Power user](#power-user--reexecução-e-flags) |
+| **Agente / automação** (unattended) | [Agente e automação](#agente-e-automação--unattended-e-códigos-de-saída) |
+| **Contribuidor** | [Contribuidor](#contribuidor--como-alterar-scripts-com-segurança) e `AGENTS.md` |
+
+## Avisos de segurança (leia antes)
+
+- **PowerShell elevado.** A primeira execução que habilita recursos do Windows precisa de *Executar como administrador*. Isso altera o host. Não rode o `.ps1` se você não confia neste repositório.
+- **Senha.** Conta Linux nova exige senha (digitação oculta). Ela **não** é gravada em `%LOCALAPPDATA%\wsl-dev-env\state.json`. Não coloque senha real em issues, PRs, logs, `.env` versionado nem na linha de comando em texto claro (`-Password` é `SecureString`).
+- **Chaves SSH.** O guia mostra **somente a chave pública** (`.pub`) e abre https://github.com/settings/keys. **Nunca** cole, envie ou commite a chave **privada**. Os scripts não copiam `id_ed25519` / `id_rsa` para o repositório.
+- **`-ForceRecreate` apaga o distro.** `wsl --unregister` destrói o sistema de arquivos da distro. Só use se você aceitar perder dados. Em `-NonInteractive` ainda exige `-Force`.
+- **Docker.** O caminho principal é **Docker Engine dentro do Ubuntu (WSL2)**, não Docker Desktop. Não instale os dois ao mesmo tempo — eles brigam. Detalhes em [Docker](#docker-caminho-principal).
+- **sudo sem senha** só com o item 7 / `-PasswordlessSudo`. Padrão: sudo **com** senha.
+- **`curl \| sh`.** Os scripts só baixam instaladores oficiais da lista em `AGENTS.md`. Agentes **não** devem pipar curl para hosts desconhecidos.
 
 ## Layout
 
@@ -13,6 +36,8 @@ Inspirado nos hábitos de CLI do [Omarchy](https://omarchy.org/) (starship + zox
 | `Install-WslDevEnv.ps1` | Entrada no Windows (menu pt-BR + flags) |
 | `guest/bootstrap.sh` | Bootstrap no Ubuntu (apt + toolchains + recursos) |
 | `guest/herdr-omarchy-keys.toml` | Bloco `[keys]` Omarchy (prefixo `ctrl+espaço`) |
+| `AGENTS.md` | Regras para agentes (detectar Windows vs WSL **antes** de agir) |
+| `SECURITY.md` | Como relatar falhas; sem log de segredo |
 
 ## Pré-requisitos
 
@@ -23,9 +48,9 @@ Inspirado nos hábitos de CLI do [Omarchy](https://omarchy.org/) (starship + zox
 - Internet no guest para rustup / fnm / starship / zoxide e para os instaladores oficiais que você escolher.
 - Windows Terminal é agradável; não é obrigatório.
 
-## Como rodar (no Windows)
+## Usuário final — primeira instalação no Windows
 
-**Não** rode o `.ps1` de dentro do WSL.
+**Não** rode o `.ps1` de dentro do WSL. Se `$env:WSL_DISTRO_NAME` existir, você está no guest: saia e abra o PowerShell do Windows.
 
 1. Copie este repositório para o disco do Windows (ou clone com Git for Windows).
 2. Abra o **Windows PowerShell 64-bit como Administrador**.
@@ -64,7 +89,7 @@ Padrão enxuto: **DX base ligado**, o resto desligado até você marcar.
 | GitHub CLI (`gh`) | desligado | Pacote oficial no apt do guest |
 | Herdr + atalhos Omarchy | desligado | Instalador oficial no Ubuntu (`https://herdr.dev/install.sh`) e, se possível, no Windows (`install.ps1`). Grava o `[keys]` de `guest/herdr-omarchy-keys.toml` sem apagar outras seções do `config.toml` |
 | CLIs de agentes | nenhum | Só os que você marcar: **claude, codex, opencode, pi, grok, kimi, cursor** (instaladores oficiais) |
-| GitHub + SSH | pergunta | Se você usa GitHub: gera `ed25519`, mostra a **chave pública**, abre https://github.com/settings/keys, instala `gh` se faltar, testa `ssh -T git@github.com` |
+| GitHub + SSH | pergunta | Se você usa GitHub: gera `ed25519` em `~/.ssh` **no Ubuntu**, mostra a **chave pública**, abre https://github.com/settings/keys, instala `gh` se faltar, testa `ssh -T git@github.com` |
 | sudo sem senha | desligado | Só se você ligar o item 7. Contas novas usam **sudo com senha** |
 
 **firstmate** não é instalado (nem oferecido neste menu).
@@ -112,7 +137,25 @@ Instaladores oficiais, só os escolhidos, idempotentes:
 
 Conta **nova** exige senha (digitação oculta, com confirmação). Não criamos senha vazia nem `NOPASSWD` por padrão. `sudo` sem senha só com o item 7 / `-PasswordlessSudo`.
 
-## Parâmetros (automação)
+## Power user — reexecução e flags
+
+Seguro reexecutar. Ferramentas já instaladas são puladas; apt é idempotente; blocos de rc e `[keys]` do Herdr são substituídos.
+
+No Windows (host saudável, admin opcional):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\Install-WslDevEnv.ps1 -Username SEUNOME
+```
+
+Dentro do Ubuntu:
+
+```bash
+sudo ./guest/bootstrap.sh --user SEUNOME --system-only   # opcional, apt
+./guest/bootstrap.sh --user SEUNOME --user-only
+# com os mesmos flags de recurso (--docker, --gh, --herdr, --agents …)
+```
+
+### Parâmetros
 
 | Parâmetro | Significado |
 | --- | --- |
@@ -141,14 +184,14 @@ powershell -ExecutionPolicy Bypass -File .\Install-WslDevEnv.ps1 -NonInteractive
 powershell -ExecutionPolicy Bypass -File .\Install-WslDevEnv.ps1 -BootstrapOnly -Username SEUNOME
 ```
 
-## O que é instalado no host
+### O que é instalado no host
 
 - Recursos `Microsoft-Windows-Subsystem-Linux` e `VirtualMachinePlatform` (idempotente)
 - WSL na versão **2**, `wsl --update` quando existir
 - Distro **Ubuntu** atual se faltar (`wsl --install -d Ubuntu --no-launch` quando a flag existir)
 - Herdr no Windows só se você pediu Herdr
 
-## O que é instalado no guest (Ubuntu)
+### O que é instalado no guest (Ubuntu)
 
 **Sempre (mínimo):** `curl`, `ca-certificates`, `git`, `sudo`, `locales` (`en_US` + `pt_BR`), `openssh-client`, `adduser`, `unzip`, `xz-utils`.
 
@@ -163,31 +206,55 @@ PATH fica em `~/.config/wsl-dev-env/env.sh`, sourced no `.profile` e no **topo**
 
 `/etc/wsl.conf` define `default=<usuário>` e `systemd=true` sem apagar chaves desconhecidas.
 
-## Reexecução
+## Agente e automação — unattended e códigos de saída
 
-Seguro reexecutar. Ferramentas já instaladas são puladas; apt é idempotente; blocos de rc e `[keys]` do Herdr são substituídos.
+Detecte o SO **antes** de qualquer comando. Detalhes em `AGENTS.md`.
 
-No Windows (host saudável, admin opcional):
+- **Nunca** rode `Install-WslDevEnv.ps1` de dentro do WSL (`WSL_DISTRO_NAME` / `WSL_INTEROP`).
+- **Nunca** passe `-ForceRecreate` a menos que o operador peça explicitamente e aceite perda de dados.
+- **Nunca** instale firstmate nem agentes além da lista pedida.
+- **Nunca** faça `curl … \| sh` para host que não está na lista de instaladores oficiais.
+- Senha: `Read-Host -AsSecureString` (ou equivalente); não escreva senha em arquivo versionado nem em log.
+
+Exemplo unattended (PowerShell **Windows** 64-bit):
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\Install-WslDevEnv.ps1 -Username SEUNOME
+$pwd = Read-Host 'Senha Linux' -AsSecureString
+powershell -ExecutionPolicy Bypass -File .\Install-WslDevEnv.ps1 -NonInteractive -Username SEUNOME -Password $pwd
 ```
 
-Dentro do Ubuntu:
+| Código | Significado | O que o chamador faz |
+| --- | --- | --- |
+| **0** | Sucesso | Distro pronto; `wsl -d Ubuntu -u SEUNOME` |
+| **1** | Falha | Leia o `ERRO:` no stderr/stdout; não repita às cegas com `-ForceRecreate` |
+| **3010** | Sucesso, **precisa reboot** | Reinicie o Windows e rode **o mesmo comando**. Estado (usuário + flags) está em `%LOCALAPPDATA%\wsl-dev-env\state.json`; senha **não**. Se a conta ainda não existia, peça a senha de novo. |
 
-```bash
-sudo ./guest/bootstrap.sh --user SEUNOME --system-only   # opcional, apt
-./guest/bootstrap.sh --user SEUNOME --user-only
-# com os mesmos flags de recurso (--docker, --gh, --herdr, --agents …)
-```
+`-NonInteractive` sem `-Username` (e sem estado salvo) falha. Conta nova sem `-Password` também falha. `-ForceRecreate` em `-NonInteractive` sem `-Force` é recusado.
 
-## Notas de segurança
+Flags de host para o guest: `--skip-base-dx --docker --gh --herdr --agents LIST --password-file --passwordless-sudo`. Este instalador **não** inicia/para/reinicia o Herdr.
+
+## Contribuidor — como alterar scripts com segurança
+
+Fonte de verdade do comportamento: `Install-WslDevEnv.ps1` (host) e `guest/bootstrap.sh` (guest). Docs em `README.md` / `AGENTS.md` / `SECURITY.md`. Não edite este repositório como se fosse data-ingestion.
+
+- **Idioma:** strings visíveis ao usuário em **pt-BR**; identificadores em inglês.
+- **Quebras de linha:** scripts Linux LF; PowerShell CRLF (veja `.gitattributes`).
+- **Idempotência:** edite só blocos marcados (`# --- wsl-dev-env begin:… ---` / `end:`). Reexecuções devem substituir, não empilhar duplicatas.
+- **Padrões seguros:** não desregistre distro sem `-ForceRecreate`; não crie conta com senha vazia; não ligue NOPASSWD sem `-PasswordlessSudo`; não instale firstmate.
+- **Segredos:** nunca commite senhas, tokens, kubeconfigs, `id_rsa*`, `*.pem`, `.env` real, cópias de `state.json`. O guia SSH só imprime linha `ssh-ed25519 …`.
+- **URLs:** não troque `curl \| sh` para outro host sem revisão explícita. Prefira pin/verificação quando for prático; recuse instaladores desconhecidos.
+- **Testes sem máquina de produção:** `bash -n guest/bootstrap.sh`; parse do `.ps1` (CI); releia flags. Não precisa de WSL de produção, cluster, nem conta GitHub real. Não rode `-ForceRecreate` em distro alheio.
+
+CI enxuto (`.github/workflows/ci.yml`): ShellCheck com severidade warning + parse do PowerShell. Dependabot só em GitHub Actions.
+
+## Notas de segurança (resumo operacional)
 
 - Distro **saudável** existente permanece. O script **não** faz `wsl --unregister` sem **`-ForceRecreate`**.
 - Distro registrado mas quebrado falha com orientação; `-ForceRecreate` só se você aceitar perder dados.
 - Sem segredos na nuvem. A chave **privada** SSH nunca é exibida nem enviada; só a `.pub`.
 - Usuário + escolhas de recurso ficam em `%LOCALAPPDATA%\wsl-dev-env\state.json` para o reboot. Apague o arquivo se não quiser. **Senha não entra aí.**
 - Conta nova nasce com senha que você digitou e sudo **com** senha, salvo opt-in de NOPASSWD.
+- Relatar vulnerabilidades: `SECURITY.md` (aviso privado; não abra issue pública com exploit ou segredo).
 
 ## Solução de problemas
 
