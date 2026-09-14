@@ -1,0 +1,33 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+      - name: ShellCheck guest bootstrap
+        run: shellcheck --severity=warning -x guest/bootstrap.sh
+      - name: Parse PowerShell installer
+        shell: pwsh
+        run: |
+          $errs = $null
+          $null = [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path './Install-WslDevEnv.ps1'),
+            [ref]$null,
+            [ref]$errs
+          )
+          if ($errs -and $errs.Count -gt 0) {
+            $errs | ForEach-Object { Write-Error $_ }
+            exit 1
+          }
+          Write-Host 'Install-WslDevEnv.ps1 parsed OK'

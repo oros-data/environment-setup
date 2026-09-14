@@ -1076,6 +1076,7 @@ function Invoke-GitHubSshGuide {
     )
     Write-Step 'Guia GitHub + chave SSH (ed25519)'
     Write-Host 'Nunca compartilhe nem envie a chave PRIVADA. Só a .pub.' -ForegroundColor Yellow
+    Write-Host 'A chave fica só em ~/.ssh no Ubuntu; este script nunca copia chave privada para o repositório.' -ForegroundColor Yellow
 
     $gen = @'
 set -euo pipefail
@@ -1102,6 +1103,7 @@ cat "$HOME/.ssh/id_ed25519.pub"
     Write-Host ''
     Write-Host 'Chave pública (cole no GitHub):' -ForegroundColor Green
     foreach ($line in ($text -split "`r?`n")) {
+        if ($line -match 'PRIVATE KEY') { continue }
         if ($line -match '^\s*ssh-(ed25519|rsa|ed25519-sk) ') {
             Write-Host $line.Trim() -ForegroundColor Green
         }
