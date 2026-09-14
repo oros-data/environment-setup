@@ -1,0 +1,37 @@
+# Operator / installer state (Windows copies checked out by mistake)
+state.json
+*.state.json
+
+# Secrets and env
+.env
+.env.*
+!.env.example
+*.secret
+
+# SSH / TLS private material — never commit, even as "example"
+id_rsa
+id_rsa*
+id_ed25519
+id_ed25519*
+id_ecdsa
+id_ecdsa*
+id_dsa
+id_dsa*
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Kubernetes
+kubeconfig
+kubeconfig.*
+*.kubeconfig
+.kube/
+
+# Local scratch
+*.tmp
+*.bak
+*~
+.DS_Store
+Thumbs.db
+Desktop.ini
