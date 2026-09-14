@@ -1,20 +1,23 @@
-# wsl-setup
+# environment-setup
 
-Bootstrap em PowerShell no Windows para um Ubuntu WSL2 enxuto, pronto para desenvolver.
+Bootstrap de DX enxuto, inspirado nos hábitos de CLI do [Omarchy](https://omarchy.org/) (starship + zoxide, sem desktop). **O mesmo repositório** cobre Windows/WSL e macOS — não é um produto separado.
 
-**English:** Windows-side guided WSL2 Ubuntu installer. Prompts, menus, errors and this README are in **Brazilian Portuguese**. Run from elevated 64-bit Windows PowerShell:
-`powershell -ExecutionPolicy Bypass -File .\Install-WslDevEnv.ps1`.
-Audience sections below cover first install, flags (`-NonInteractive`, `-InstallDocker`, `-InstallHerdr`, `-Agents`, …), unattended exit codes (including **3010** reboot), and contributor rules.
+| Plataforma | Entrada | Onde rodar |
+| --- | --- | --- |
+| **Windows** | `Install-WslDevEnv.ps1` | PowerShell 64-bit **elevado**, no Windows. **Nunca** de dentro do WSL. |
+| **macOS** | `Install-MacDevEnv.sh` | Terminal no **Darwin**. **Nunca** no Linux, WSL, Git Bash ou como se fosse Mac. |
 
-Inspirado nos hábitos de CLI do [Omarchy](https://omarchy.org/) (starship + zoxide, sem desktop), agora com **instalação guiada**: você escolhe Docker, `gh`, Herdr (atalhos Omarchy), CLIs de agentes e o guia de SSH do GitHub. A senha da conta Linux é **definida na instalação**.
+**English:** Guided Omarchy-inspired DX bootstrap for **Windows (WSL2 Ubuntu)** and **macOS (Homebrew)**. Prompts, menus, errors and this README are in **Brazilian Portuguese**. Windows: `powershell -ExecutionPolicy Bypass -File .\Install-WslDevEnv.ps1` from elevated 64-bit PowerShell. macOS: `./Install-MacDevEnv.sh` on Darwin only. Audience sections cover first install, flags (`-NonInteractive`, `-InstallDocker`, `-InstallHerdr`, `-Agents`, …), unattended exit codes (including **3010** reboot), macOS Homebrew, and contributor rules.
 
-Este repositório é **só** o instalador WSL. Não é o monorepo data-ingestion, não instala firstmate e não liga ferramentas privadas do captain por padrão.
+Instalação **guiada** (checklist numerado): DX base, Docker, `gh`, Herdr (atalhos Omarchy), CLIs de agentes e o guia de SSH do GitHub.
+
+Este repositório é **só** o instalador de environment setup (WSL + macOS). Não é o monorepo data-ingestion, não instala firstmate e não liga ferramentas privadas do captain por padrão.
 
 ## Para quem é este repositório
 
 | Público | Comece em |
 | --- | --- |
-| **Usuário final** (Windows, primeiro WSL) | [Avisos de segurança](#avisos-de-segurança-leia-antes) e [primeira instalação](#usuário-final--primeira-instalação-no-windows) |
+| **Usuário final** (Windows/WSL ou macOS) | [Avisos de segurança](#avisos-de-segurança-leia-antes); Windows: [primeira instalação](#usuário-final--primeira-instalação-no-windows); Mac: [macOS](#macos) |
 | **Power user** (reexecução, flags) | [Power user](#power-user--reexecução-e-flags) |
 | **Agente / automação** (unattended) | [Agente e automação](#agente-e-automação--unattended-e-códigos-de-saída) |
 | **Contribuidor** | [Contribuidor](#contribuidor--como-alterar-scripts-com-segurança) e `AGENTS.md` |
@@ -34,12 +37,16 @@ Este repositório é **só** o instalador WSL. Não é o monorepo data-ingestion
 | Caminho | Papel |
 | --- | --- |
 | `Install-WslDevEnv.ps1` | Entrada no Windows (menu pt-BR + flags) |
-| `guest/bootstrap.sh` | Bootstrap no Ubuntu (apt + toolchains + recursos) |
-| `guest/herdr-omarchy-keys.toml` | Bloco `[keys]` Omarchy (prefixo `ctrl+espaço`) |
-| `AGENTS.md` | Regras para agentes (detectar Windows vs WSL **antes** de agir) |
+| `Install-MacDevEnv.sh` | Entrada no macOS (menu pt-BR + flags; Darwin only) |
+| `guest/bootstrap.sh` | Bootstrap no Ubuntu WSL (apt + toolchains + recursos) |
+| `guest/herdr-omarchy-keys.toml` | Bloco `[keys]` Omarchy (prefixo `ctrl+espaço`); Windows e Mac |
+| `tests/mac-dev-env.sh` | Testes do instalador Mac que rodam também em Linux (recusa de SO, flags, rc) |
+| `AGENTS.md` | Regras para agentes (detectar Windows vs WSL vs macOS **antes** de agir) |
 | `SECURITY.md` | Como relatar falhas; sem log de segredo |
 
-## Pré-requisitos
+No Windows a senha da conta Linux é **definida na instalação**. No Mac usamos a conta macOS que já existe — não criamos usuários novos.
+
+## Pré-requisitos (Windows)
 
 - Windows 10 **64-bit** versão **1903** (build 18362) ou posterior, ou Windows 11. **2004+ / Win11** recomendado para existir `wsl --install`.
 - Virtualização ligada no firmware (Intel VT-x / AMD-V / SVM).
@@ -57,7 +64,7 @@ Este repositório é **só** o instalador WSL. Não é o monorepo data-ingestion
 3. Libere o script só neste processo e rode:
 
 ```powershell
-cd caminho\para\wsl-setup
+cd caminho\para\environment-setup
 powershell -ExecutionPolicy Bypass -File .\Install-WslDevEnv.ps1
 ```
 
@@ -260,3 +267,132 @@ Ver [Avisos de segurança](#avisos-de-segurança-leia-antes) para as regras prin
 | `hypervisorlaunchtype Off` | Elevado: `bcdedit /set hypervisorlaunchtype Auto` e reboot |
 | Docker: permission denied | Abra um shell WSL **novo** (grupo `docker`) |
 | SSH GitHub falhou | Cadastre a `.pub` em https://github.com/settings/keys; nunca a chave privada |
+| `Install-MacDevEnv.sh` recusou Linux/WSL/Windows | Correto. No Windows use o `.ps1` elevado. O `.sh` é só Darwin. |
+
+---
+
+## macOS
+
+Caminho paralelo ao instalador Windows: **Homebrew** e depois o DX enxuto no próprio Mac. Não há distro WSL, não há conta Linux nova.
+
+### Quickstart (Mac)
+
+**Não** rode `Install-MacDevEnv.sh` no Linux, no WSL, no Git Bash nem no PowerShell Windows.
+
+1. Instale as **Command Line Tools** (compilador, git, curl da Apple):
+
+   ```bash
+   xcode-select --install
+   ```
+
+2. (Opcional, se o Terminal não enxergar discos) Ajustes do Sistema → Privacidade e Segurança → **Acesso Total ao Disco** (Full Disk Access) e habilite o Terminal / iTerm / Warp. Este instalador **não** liga isso por você.
+3. Clone o repositório e, no Terminal do macOS:
+
+   ```bash
+   chmod +x ./Install-MacDevEnv.sh
+   ./Install-MacDevEnv.sh
+   ```
+
+O menu numerado (pt-BR) funciona no bash 3.2 do sistema. Se o Homebrew ainda não existir, o script oficial é baixado (pode pedir a senha de administrador do Mac — não configuramos NOPASSWD).
+
+PATH do Homebrew depois da instalação:
+
+| Chip | Prefixo |
+| --- | --- |
+| Apple Silicon (`arm64`) | `/opt/homebrew` |
+| Intel (`x86_64`) | `/usr/local` |
+
+`~/.config/mac-dev-env/env.sh` (e blocos marcados em `.zprofile` / `.zshrc` / bash) exporta esse PATH. Reexecutar substitui os blocos; não empilha duplicatas.
+
+### Públicos
+
+| Quem | Como usar |
+| --- | --- |
+| **Usuário final** | Rode `./Install-MacDevEnv.sh`, marque o checklist, abra um Terminal novo. |
+| **Power user** | Flags `--non-interactive`, `--skip-base-dx`, `--docker`, `--gh`, `--herdr`, `--agents`, `--setup-github-ssh`. Reexecução é segura. Colima é o Docker padrão; Desktop só se você instalar o cask à parte e **não** marcar o item 2. |
+| **Agente / automação** | Só em Darwin. Nunca chame o `.sh` no WSL/Windows “como se fosse Mac”. Não crie usuários, não ligue sudo sem senha, não instale firstmate, **não** inicie/pare/reinicie o Herdr. Flags explícitos; `--help` funciona em qualquer SO (o resto recusa se não for macOS). |
+
+### O que o menu oferece (Mac)
+
+Padrão enxuto: **DX base ligado**, o resto desligado até você marcar. Sem item de sudo sem senha (a conta macOS já existe).
+
+| Recurso | Padrão | O que instala |
+| --- | --- | --- |
+| DX base (recomendado) | ligado | git, jq, python3, **fnm** + Node LTS, rustup (stable), starship, zoxide, fzf, `bash-completion@2`. zsh usa compsys (`compinit`) — não precisa do pacote bash-completion para o zsh. |
+| Docker | desligado | **Colima + CLI docker** (caminho principal). Não instala Docker Desktop. |
+| GitHub CLI (`gh`) | desligado | Fórmula brew oficial |
+| Herdr + atalhos Omarchy | desligado | Instalador oficial (`https://herdr.dev/install.sh`) e o `[keys]` de `guest/herdr-omarchy-keys.toml`. **Não** inicia o Herdr. |
+| CLIs de agentes | nenhum | Só os que você marcar: **claude, codex, opencode, pi, grok, kimi, cursor** (instaladores oficiais, iguais ao guest Linux) |
+| GitHub + SSH | pergunta | Gera `ed25519` se faltar, mostra **só a chave pública**, abre https://github.com/settings/keys, instala `gh` se faltar, testa `ssh -T git@github.com` |
+
+**firstmate** não é instalado (nem oferecido neste menu).
+
+Node é **fnm + LTS**, como no WSL — não `brew install node` e não nvm. Rust é **rustup**, não a fórmula `brew rust`.
+
+#### Docker no Mac (caminho principal)
+
+Colima sobe uma VM e o CLI `docker` fala com ela. Depois (shell novo se preciso):
+
+```bash
+colima start          # se você pulou o start no instalador
+docker run --rm hello-world
+```
+
+Não rode **Docker Desktop por cima** do Colima (os dois brigam). Se preferir Desktop: não marque Docker neste menu; instale à parte com `brew install --cask docker`.
+
+### Parâmetros (automação, Mac)
+
+| Flag | Significado |
+| --- | --- |
+| `--non-interactive` | Nunca pergunta; recursos só pelos flags. DX base continua ligado salvo `--skip-base-dx`. |
+| `--skip-base-dx` | Não instala o DX base |
+| `--docker` | Colima + CLI docker (e tenta `colima start`) |
+| `--gh` | GitHub CLI |
+| `--herdr` | Herdr + atalhos Omarchy |
+| `--agents claude,pi` | Só estes agentes |
+| `--setup-github-ssh` | Guia SSH (e instala `gh` se faltar) |
+| `--herdr-keys PATH` | TOML `[keys]` (padrão: `guest/herdr-omarchy-keys.toml`) |
+
+```bash
+./Install-MacDevEnv.sh --non-interactive --docker --gh --herdr --agents claude,pi --setup-github-ssh
+```
+
+### Shell (zsh + bash opcional)
+
+- **zsh** (padrão do macOS): blocos marcados em `~/.zprofile` e `~/.zshrc` — brew/fnm/cargo no PATH, starship, zoxide, fzf, `compinit`, history-search no ↑/↓.
+- **bash** opcional: `~/.bash_profile` e `~/.bashrc` no mesmo estilo. `bash-completion@2` precisa de bash 4+ (o `/bin/bash` da Apple é 3.2; use `brew install bash` se quiser completions extras).
+- PATH central: `~/.config/mac-dev-env/env.sh` (Apple Silicon `/opt/homebrew`, Intel `/usr/local`).
+
+### Notas de segurança (Mac)
+
+- Sem segredos no repositório. A chave **privada** SSH nunca é exibida nem gravada no clone; só a `.pub` no Terminal.
+- Homebrew vem do script oficial (`https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh`). Fórmulas do tap padrão; sem pins agressivos (o brew é rolling; reexecução é idempotente).
+- Não criamos usuários, não definimos senha, não ligamos sudo sem senha.
+- Command Line Tools (`xcode-select --install`) e Full Disk Access são **pré-requisitos** manuais.
+- Este instalador **não** inicia, não para e não recarrega o Herdr.
+
+### Reexecução (Mac)
+
+```bash
+./Install-MacDevEnv.sh
+```
+
+Ferramentas já instaladas são puladas; blocos de rc e `[keys]` do Herdr são substituídos.
+
+Testes (Linux ou Mac, sem instalar nada):
+
+```bash
+./tests/mac-dev-env.sh
+```
+
+### Solução de problemas (Mac)
+
+| Sintoma | O que fazer |
+| --- | --- |
+| Recusa Linux/WSL/Git Bash | Use o Mac de verdade, ou o `.ps1` no Windows |
+| `xcode-select` ausente | `xcode-select --install`, espere, rode de novo |
+| Homebrew pede senha | Senha de administrador do Mac; não usamos NOPASSWD |
+| `brew` não acha depois do install | Abra um Terminal novo ou `eval "$($(uname -m | grep -q arm && echo /opt/homebrew || echo /usr/local)/bin/brew shellenv)"` |
+| Docker: daemon down | `colima start` (não instale Desktop por cima) |
+| SSH GitHub falhou | Cadastre a `.pub` em https://github.com/settings/keys; nunca a chave privada |
+| Terminal sem acesso a pastas | Full Disk Access para o app do Terminal |
