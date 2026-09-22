@@ -28,6 +28,8 @@ BEGIN_HERDR_KEYS="# --- wsl-dev-env begin:herdr-keys ---"
 END_HERDR_KEYS="# --- wsl-dev-env end:herdr-keys ---"
 BEGIN_HERDR_THEME="# --- wsl-dev-env begin:herdr-theme ---"
 END_HERDR_THEME="# --- wsl-dev-env end:herdr-theme ---"
+BEGIN_STARSHIP="# --- wsl-dev-env begin:starship ---"
+END_STARSHIP="# --- wsl-dev-env end:starship ---"
 
 USER_NAME=""
 SYSTEM_ONLY=0
@@ -687,6 +689,32 @@ strip_toml_table() {
   mv "$tmp" "$file"
 }
 
+merge_starship_config() {
+  local home="$1"
+  local src="${BASH_SOURCE[0]}"
+  src="$(dirname "$(readlink -f "$src")")/starship-omarchy.toml"
+  if [[ ! -f "$src" ]]; then
+    echo "erro: starship-omarchy.toml não encontrado em $(dirname "$src")" >&2
+    exit 1
+  fi
+  local dest="${home}/.config/starship.toml"
+  mkdir -p "$(dirname "$dest")"
+  [[ -f "$dest" ]] || : > "$dest"
+  tr -d '\r' < "$dest" > "${dest}.nocr"
+  mv "${dest}.nocr" "$dest"
+
+  strip_block "$dest" "$BEGIN_STARSHIP" "$END_STARSHIP"
+
+  local body
+  body="$(tr -d '\r' < "$src")"
+  append_block "$dest" "$BEGIN_STARSHIP" "$END_STARSHIP" "$body"
+
+  if [[ "$(id -un)" != "$USER_NAME" ]]; then
+    chown -R "${USER_NAME}:${USER_NAME}" "${home}/.config" 2>/dev/null || true
+  fi
+  ok "starship tema Omarchy (tokyo-night) gravado em ${dest}"
+}
+
 merge_herdr_keys() {
   local home="$1"
   local src
@@ -911,8 +939,18 @@ run_user_stage() {
     ok "DX base desligado; pulando python/node/rust/starship/zoxide/fzf de usuário"
   fi
 
+  if command -v starship >/dev/null 2>&1; then
+    merge_starship_config "$home"
+  fi
+
   if [[ "$INSTALL_HERDR" -eq 1 ]]; then
     install_herdr_guest
+  fi
+
+  if command -v herdr >/dev/null 2>&1; then
+    if [[ "$INSTALL_HERDR" -ne 1 ]]; then
+      merge_herdr_keys "$home"
+    fi
   fi
 
   install_chosen_agents

@@ -28,6 +28,8 @@ BEGIN_HERDR_KEYS="# --- mac-dev-env begin:herdr-keys ---"
 END_HERDR_KEYS="# --- mac-dev-env end:herdr-keys ---"
 BEGIN_HERDR_THEME="# --- mac-dev-env begin:herdr-theme ---"
 END_HERDR_THEME="# --- mac-dev-env end:herdr-theme ---"
+BEGIN_STARSHIP="# --- mac-dev-env begin:starship ---"
+END_STARSHIP="# --- mac-dev-env end:starship ---"
 
 INSTALL_BASE_DX=1
 INSTALL_DOCKER=0
@@ -909,6 +911,30 @@ strip_toml_table() {
   mv "$tmp" "$file"
 }
 
+merge_starship_config() {
+  local home="${1:-$HOME}"
+  local src
+  src="$(script_dir)/guest/starship-omarchy.toml"
+  if [[ ! -f "$src" ]]; then
+    echo "erro: starship-omarchy.toml n
+not found at $src" >&2
+    exit 1
+  fi
+  local dest="${home}/.config/starship.toml"
+  mkdir -p "$(dirname "$dest")"
+  [[ -f "$dest" ]] || : > "$dest"
+  tr -d '\r' < "$dest" > "${dest}.nocr"
+  mv "${dest}.nocr" "$dest"
+
+  strip_block "$dest" "$BEGIN_STARSHIP" "$END_STARSHIP"
+
+  local body
+  body="$(tr -d '\r' < "$src")"
+  append_block "$dest" "$BEGIN_STARSHIP" "$END_STARSHIP" "$body"
+
+  ok "starship tema Omarchy (tokyo-night) gravado em ${dest}"
+}
+
 merge_herdr_keys() {
   local home="${1:-$HOME}"
   local src
@@ -1144,6 +1170,11 @@ run_install() {
   else
     ok "DX base desligado; pulando git/jq/python/fnm/rust/starship/zoxide/fzf"
   fi
+
+  if command -v starship >/dev/null 2>&1; then
+    merge_starship_config "$HOME"
+  fi
+
   if [[ "$INSTALL_DOCKER" -eq 1 ]]; then
     install_docker_colima
   fi
@@ -1153,6 +1184,13 @@ run_install() {
   if [[ "$INSTALL_HERDR" -eq 1 ]]; then
     install_herdr
   fi
+
+  if command -v herdr >/dev/null 2>&1; then
+    if [[ "$INSTALL_HERDR" -ne 1 ]]; then
+      merge_herdr_keys "$HOME"
+    fi
+  fi
+
   install_chosen_agents
   configure_shell_rc "$HOME"
   if [[ "$SETUP_GITHUB_SSH" -eq 1 ]]; then
