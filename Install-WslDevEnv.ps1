@@ -99,6 +99,7 @@ $script:StateDir = Join-Path $env:LOCALAPPDATA 'wsl-dev-env'
 $script:StatePath = Join-Path $script:StateDir 'state.json'
 $script:GuestRel = 'guest\bootstrap.sh'
 $script:HerdrKeysRel = 'guest\herdr-omarchy-keys.toml'
+$script:StarshipThemeRel = 'guest\starship-omarchy.toml'
 $script:KnownAgents = @('claude', 'codex', 'opencode', 'pi', 'grok', 'kimi', 'cursor')
 $script:Plan = $null
 
@@ -926,6 +927,14 @@ function Invoke-GuestBootstrap {
     $text = [System.IO.File]::ReadAllText($guestWin) -replace "`r`n", "`n" -replace "`r", "`n"
     if (-not $text.EndsWith("`n")) { $text += "`n" }
     Copy-TextIntoWsl -DistroName $DistroName -Content $text -WslPath '/tmp/wsl-dev-env-bootstrap.sh' -Mode '755'
+
+    $themeWin = Join-Path $PSScriptRoot $script:StarshipThemeRel
+    if (-not (Test-Path -LiteralPath $themeWin)) {
+        throw "Tema Starship Omarchy ausente em $themeWin"
+    }
+    $theme = [System.IO.File]::ReadAllText($themeWin) -replace "`r`n", "`n" -replace "`r", "`n"
+    if (-not $theme.EndsWith("`n")) { $theme += "`n" }
+    Copy-TextIntoWsl -DistroName $DistroName -Content $theme -WslPath '/tmp/wsl-dev-env-starship-omarchy.toml' -Mode '644'
 
     if ($Plan.Herdr) {
         $keysWin = Join-Path $PSScriptRoot $script:HerdrKeysRel
