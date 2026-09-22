@@ -916,8 +916,7 @@ merge_starship_config() {
   local src
   src="$(script_dir)/guest/starship-omarchy.toml"
   if [[ ! -f "$src" ]]; then
-    echo "erro: starship-omarchy.toml n
-not found at $src" >&2
+    echo "erro: starship-omarchy.toml não encontrado em $src" >&2
     exit 1
   fi
   local dest="${home}/.config/starship.toml"
