@@ -666,20 +666,6 @@ resolve_herdr_keys_src() {
   printf ''
 }
 
-resolve_starship_theme_src() {
-  local sibling
-  sibling="$(script_dir)/starship-omarchy.toml"
-  if [[ -f "$sibling" ]]; then
-    printf '%s' "$sibling"
-    return
-  fi
-  if [[ -f /tmp/wsl-dev-env-starship-omarchy.toml ]]; then
-    printf '%s' /tmp/wsl-dev-env-starship-omarchy.toml
-    return
-  fi
-  printf ''
-}
-
 # Remove uma tabela TOML [name] (e [name.foo]) até a próxima tabela de outro nome.
 strip_toml_table() {
   local file="$1" name="$2"
@@ -705,12 +691,6 @@ strip_toml_table() {
 
 merge_starship_config() {
   local home="$1"
-  local src
-  src="$(resolve_starship_theme_src)"
-  if [[ -z "$src" || ! -f "$src" ]]; then
-    echo "erro: starship-omarchy.toml não encontrado" >&2
-    exit 1
-  fi
   local dest="${home}/.config/starship.toml"
   mkdir -p "$(dirname "$dest")"
   [[ -f "$dest" ]] || : > "$dest"
@@ -719,8 +699,96 @@ merge_starship_config() {
 
   strip_block "$dest" "$BEGIN_STARSHIP" "$END_STARSHIP"
 
+  # Embedded Omarchy starship theme (tokyo-night)
+  # Keep in sync with guest/starship-omarchy.toml in the repo
   local body
-  body="$(tr -d '\r' < "$src")"
+  body="$(cat <<'STARSHIP_THEME_EOF'
+# Omarchy default starship prompt theme (tokyo-night)
+# Matches the Herdr tokyo-night theme used in Omarchy
+# Source: inspired by starship tokyo-night preset
+
+format = """
+[](#3b4261)\
+$username\
+[](bg:#7aa2f7 fg:#3b4261)\
+$directory\
+[](fg:#7aa2f7 bg:#9ece6a)\
+$git_branch\
+$git_status\
+[](fg:#9ece6a bg:#f7768e)\
+$nodejs\
+$rust\
+$python\
+[](fg:#f7768e bg:#7dcfff)\
+$docker_context\
+[](fg:#7dcfff bg:#545c7e)\
+$time\
+[ ](fg:#545c7e)\
+"""
+
+[username]
+show_always = true
+style_user = "bg:#3b4261"
+style_root = "bg:#3b4261"
+format = '[$user ]($style)'
+disabled = false
+
+[directory]
+style = "bg:#7aa2f7"
+format = "[ $path ]($style)"
+truncation_length = 3
+truncation_symbol = "…/"
+
+[directory.substitutions]
+"Documents" = "󰈙 "
+"Downloads" = " "
+"Music" = " "
+"Pictures" = " "
+
+[git_branch]
+symbol = ""
+style = "bg:#9ece6a"
+format = '[ $symbol $branch ]($style)'
+
+[git_status]
+style = "bg:#9ece6a"
+format = '[$all_status$ahead_behind ]($style)'
+
+[nodejs]
+symbol = ""
+style = "bg:#f7768e"
+format = '[ $symbol ($version) ]($style)'
+
+[rust]
+symbol = ""
+style = "bg:#f7768e"
+format = '[ $symbol ($version) ]($style)'
+
+[python]
+symbol = ""
+style = "bg:#f7768e"
+format = '[ $symbol ($version) ]($style)'
+
+[docker_context]
+symbol = ""
+style = "bg:#7dcfff"
+format = '[ $symbol $context ]($style)'
+
+[time]
+disabled = false
+time_format = "%R"
+style = "bg:#545c7e"
+format = '[ ♥ $time ]($style)'
+
+[palette.tokyo-night]
+background = "#1a1b26"
+foreground = "#c0caf5"
+selection_background = "#33467c"
+selection_foreground = "#c0caf5"
+urls = "#73daca"
+cursor = "#c0caf5"
+STARSHIP_THEME_EOF
+)"
   append_block "$dest" "$BEGIN_STARSHIP" "$END_STARSHIP" "$body"
 
   if [[ "$(id -un)" != "$USER_NAME" ]]; then
