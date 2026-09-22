@@ -666,6 +666,20 @@ resolve_herdr_keys_src() {
   printf ''
 }
 
+resolve_starship_theme_src() {
+  local sibling
+  sibling="$(script_dir)/starship-omarchy.toml"
+  if [[ -f "$sibling" ]]; then
+    printf '%s' "$sibling"
+    return
+  fi
+  if [[ -f /tmp/wsl-dev-env-starship-omarchy.toml ]]; then
+    printf '%s' /tmp/wsl-dev-env-starship-omarchy.toml
+    return
+  fi
+  printf ''
+}
+
 # Remove uma tabela TOML [name] (e [name.foo]) até a próxima tabela de outro nome.
 strip_toml_table() {
   local file="$1" name="$2"
@@ -691,10 +705,10 @@ strip_toml_table() {
 
 merge_starship_config() {
   local home="$1"
-  local src="${BASH_SOURCE[0]}"
-  src="$(dirname "$(readlink -f "$src")")/starship-omarchy.toml"
-  if [[ ! -f "$src" ]]; then
-    echo "erro: starship-omarchy.toml não encontrado em $(dirname "$src")" >&2
+  local src
+  src="$(resolve_starship_theme_src)"
+  if [[ -z "$src" || ! -f "$src" ]]; then
+    echo "erro: starship-omarchy.toml não encontrado" >&2
     exit 1
   fi
   local dest="${home}/.config/starship.toml"
