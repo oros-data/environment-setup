@@ -429,9 +429,12 @@ Esta máquina está no build $build. Atualize o Windows e rode de novo.
     if ($null -ne $fwVirt) {
         if (-not $fwVirt) {
             throw @"
-A virtualização da CPU está desligada no firmware.
-Reinicie na BIOS/UEFI e ligue Intel VT-x / AMD-V / SVM, depois rode de novo.
-Em alguns notebooks isso se chama "Virtualization Technology" ou "Hyper-V".
+A virtualização da CPU está desligada no firmware (BIOS/UEFI).
+
+Reinicie na BIOS/UEFI e ligue Intel VT-x / AMD-V / SVM.
+Alguns menus de BIOS rotulam este ajuste de firmware como "Virtualization Technology" ou "Hyper-V" — é uma configuração de CPU/firmware, não o recurso Windows Hyper-V.
+
+Depois rode o script de novo.
 "@
         }
         Write-Ok 'Virtualização no firmware está ligada'
