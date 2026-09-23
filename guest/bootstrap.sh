@@ -28,8 +28,6 @@ BEGIN_HERDR_KEYS="# --- wsl-dev-env begin:herdr-keys ---"
 END_HERDR_KEYS="# --- wsl-dev-env end:herdr-keys ---"
 BEGIN_HERDR_THEME="# --- wsl-dev-env begin:herdr-theme ---"
 END_HERDR_THEME="# --- wsl-dev-env end:herdr-theme ---"
-BEGIN_STARSHIP="# --- wsl-dev-env begin:starship ---"
-END_STARSHIP="# --- wsl-dev-env end:starship ---"
 
 USER_NAME=""
 SYSTEM_ONLY=0
@@ -692,17 +690,12 @@ strip_toml_table() {
 merge_starship_config() {
   local home="$1"
   local dest="${home}/.config/starship.toml"
+  local tmp="${dest}.new"
   mkdir -p "$(dirname "$dest")"
-  [[ -f "$dest" ]] || : > "$dest"
-  tr -d '\r' < "$dest" > "${dest}.nocr"
-  mv "${dest}.nocr" "$dest"
-
-  strip_block "$dest" "$BEGIN_STARSHIP" "$END_STARSHIP"
 
   # Embedded starship config
   # Keep in sync with guest/starship-omarchy.toml in the repo
-  local body
-  body="$(cat <<'STARSHIP_THEME_EOF'
+  cat > "$tmp" <<'STARSHIP_THEME_EOF'
 add_newline = true
 command_timeout = 200
 format = "[$directory$git_branch$git_status]($style)\n$character"
@@ -736,8 +729,19 @@ staged     = ""
 renamed    = ""
 deleted    = ""
 STARSHIP_THEME_EOF
-)"
-  append_block "$dest" "$BEGIN_STARSHIP" "$END_STARSHIP" "$body"
+
+  if [[ -f "$dest" ]] && cmp -s "$tmp" "$dest"; then
+    rm -f "$tmp"
+    ok "starship config já atualizado em ${dest}"
+    return 0
+  fi
+  if [[ -f "$dest" ]]; then
+    local backup
+    backup="${dest}.bak.$(date +%Y%m%d%H%M%S)"
+    cp -p "$dest" "$backup"
+    ok "starship.toml anterior salvo em ${backup}"
+  fi
+  mv "$tmp" "$dest"
 
   if [[ "$(id -un)" != "$USER_NAME" ]]; then
     chown -R "${USER_NAME}:${USER_NAME}" "${home}/.config" 2>/dev/null || true

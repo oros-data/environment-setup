@@ -172,24 +172,28 @@ say "merge_herdr_keys preserva outras seções e é idempotente"
 brew_p="$(brew_prefix_guess)"
 say "brew_prefix_guess=$brew_p"
 
-merge_starship_config "$tmp"
+shipped="${ROOT}/guest/starship-omarchy.toml"
+merge_starship_config "$tmp" >/dev/null
 star="${tmp}/.config/starship.toml"
-grep -Fq 'command_timeout = 200' "$star" || { echo "FAIL: starship config não copiou" >&2; exit 1; }
-grep -Fq 'bold cyan' "$star" || { echo "FAIL: starship config cyan styling ausente" >&2; exit 1; }
-grep -Eq '^\[character\]' "$star" || { echo "FAIL: starship config faltando seções TOML" >&2; exit 1; }
-grep -Fq 'mac-dev-env begin:starship' "$star" || { echo "FAIL: starship faltando block markers" >&2; exit 1; }
-printf '\n[custom]\nvalue = 1\n' >> "$star"
-merge_starship_config "$tmp"
-grep -Fq 'value = 1' "$star" || { echo "FAIL: merge apagou seção [custom]" >&2; exit 1; }
-n="$(grep -c 'command_timeout = 200' "$star" || true)"
-[[ "$n" -eq 1 ]] || { echo "FAIL: merge duplicou config (n=$n)" >&2; exit 1; }
-say "merge_starship_config embedded theme works and is idempotent"
+cmp -s "$shipped" "$star" || { echo "FAIL: starship.toml gerado difere de guest/starship-omarchy.toml" >&2; exit 1; }
+say "merge_starship_config grava guest/starship-omarchy.toml byte a byte"
 
-embed_tmp="$(mktemp)"
-sed -n '/body="$(cat <<'\''STARSHIP_THEME_EOF'\''/,/^STARSHIP_THEME_EOF$/p' "$SCRIPT" | sed '1d;$d' > "$embed_tmp"
-diff -q "${ROOT}/guest/starship-omarchy.toml" "$embed_tmp" >/dev/null 2>&1 || { echo "FAIL: starship config embutido difere de guest/starship-omarchy.toml" >&2; exit 1; }
-rm -f "$embed_tmp"
-say "starship embutido no Install-MacDevEnv.sh bate com guest/starship-omarchy.toml"
+printf 'add_newline = false\n\n[custom]\nvalue = 1\n' > "$star"
+out="$(merge_starship_config "$tmp")"
+backups=("${star}".bak.*)
+[[ ${#backups[@]} -eq 1 && -f "${backups[0]}" ]] || { echo "FAIL: backup do starship.toml divergente ausente" >&2; exit 1; }
+grep -Fxq 'value = 1' "${backups[0]}" || { echo "FAIL: backup não preserva o conteúdo anterior" >&2; exit 1; }
+printf '%s' "$out" | grep -Fq "${backups[0]}" || { echo "FAIL: mensagem não informa o backup: $out" >&2; exit 1; }
+cmp -s "$shipped" "$star" || { echo "FAIL: starship.toml divergente não foi substituído" >&2; exit 1; }
+say "starship.toml divergente vai para backup e é substituído"
+
+touch -t 200001010000 "$star"
+merge_starship_config "$tmp" >/dev/null
+backups=("${star}".bak.*)
+[[ ${#backups[@]} -eq 1 ]] || { echo "FAIL: reexecução criou backup extra (n=${#backups[@]})" >&2; exit 1; }
+cmp -s "$shipped" "$star" || { echo "FAIL: reexecução alterou starship.toml" >&2; exit 1; }
+[[ -z "$(find "$star" -newermt 2001-01-01)" ]] || { echo "FAIL: reexecução reescreveu starship.toml" >&2; exit 1; }
+say "reexecução com starship.toml igual é no-op"
 HELPER
 )" || {
   printf '%s\n' "$helper_out" >&2
