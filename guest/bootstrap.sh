@@ -28,8 +28,6 @@ BEGIN_HERDR_KEYS="# --- wsl-dev-env begin:herdr-keys ---"
 END_HERDR_KEYS="# --- wsl-dev-env end:herdr-keys ---"
 BEGIN_HERDR_THEME="# --- wsl-dev-env begin:herdr-theme ---"
 END_HERDR_THEME="# --- wsl-dev-env end:herdr-theme ---"
-BEGIN_STARSHIP="# --- wsl-dev-env begin:starship ---"
-END_STARSHIP="# --- wsl-dev-env end:starship ---"
 
 USER_NAME=""
 SYSTEM_ONLY=0
@@ -692,109 +690,63 @@ strip_toml_table() {
 merge_starship_config() {
   local home="$1"
   local dest="${home}/.config/starship.toml"
+  local tmp="${dest}.new"
   mkdir -p "$(dirname "$dest")"
-  [[ -f "$dest" ]] || : > "$dest"
-  tr -d '\r' < "$dest" > "${dest}.nocr"
-  mv "${dest}.nocr" "$dest"
 
-  strip_block "$dest" "$BEGIN_STARSHIP" "$END_STARSHIP"
-
-  # Embedded Omarchy starship theme (tokyo-night)
+  # Embedded starship config
   # Keep in sync with guest/starship-omarchy.toml in the repo
-  local body
-  body="$(cat <<'STARSHIP_THEME_EOF'
-# Omarchy default starship prompt theme (tokyo-night)
-# Matches the Herdr tokyo-night theme used in Omarchy
-# Source: inspired by starship tokyo-night preset
+  cat > "$tmp" <<'STARSHIP_THEME_EOF'
+add_newline = true
+command_timeout = 200
+format = "[$directory$git_branch$git_status]($style)\n$character"
 
-format = """
-[](#3b4261)\
-$username\
-[](bg:#7aa2f7 fg:#3b4261)\
-$directory\
-[](fg:#7aa2f7 bg:#9ece6a)\
-$git_branch\
-$git_status\
-[](fg:#9ece6a bg:#f7768e)\
-$nodejs\
-$rust\
-$python\
-[](fg:#f7768e bg:#7dcfff)\
-$docker_context\
-[](fg:#7dcfff bg:#545c7e)\
-$time\
-[ ](fg:#545c7e)\
-"""
-
-[username]
-show_always = true
-style_user = "bg:#3b4261"
-style_root = "bg:#3b4261"
-format = '[$user ]($style)'
-disabled = false
+[character]
+error_symbol = "[✗](bold cyan)"
+success_symbol = "[❯](bold cyan)"
 
 [directory]
-style = "bg:#7aa2f7"
-format = "[ $path ]($style)"
-truncation_length = 3
+truncation_length = 2
 truncation_symbol = "…/"
-
-[directory.substitutions]
-"Documents" = "󰈙 "
-"Downloads" = " "
-"Music" = " "
-"Pictures" = " "
+repo_root_style = "bold cyan"
+repo_root_format = "[$repo_root]($repo_root_style)[$path]($style)[$read_only]($read_only_style) "
 
 [git_branch]
-symbol = ""
-style = "bg:#9ece6a"
-format = '[ $symbol $branch ]($style)'
+format = "[$branch]($style) "
+style = "italic cyan"
 
 [git_status]
-style = "bg:#9ece6a"
-format = '[$all_status$ahead_behind ]($style)'
-
-[nodejs]
-symbol = ""
-style = "bg:#f7768e"
-format = '[ $symbol ($version) ]($style)'
-
-[rust]
-symbol = ""
-style = "bg:#f7768e"
-format = '[ $symbol ($version) ]($style)'
-
-[python]
-symbol = ""
-style = "bg:#f7768e"
-format = '[ $symbol ($version) ]($style)'
-
-[docker_context]
-symbol = ""
-style = "bg:#7dcfff"
-format = '[ $symbol $context ]($style)'
-
-[time]
-disabled = false
-time_format = "%R"
-style = "bg:#545c7e"
-format = '[ ♥ $time ]($style)'
-
-[palette.tokyo-night]
-background = "#1a1b26"
-foreground = "#c0caf5"
-selection_background = "#33467c"
-selection_foreground = "#c0caf5"
-urls = "#73daca"
-cursor = "#c0caf5"
+format     = '[$all_status]($style)'
+style      = "cyan"
+ahead      = "⇡${count} "
+diverged   = "⇕⇡${ahead_count}⇣${behind_count} "
+behind     = "⇣${count} "
+conflicted = " "
+up_to_date = " "
+untracked  = "? "
+modified   = " "
+stashed    = ""
+staged     = ""
+renamed    = ""
+deleted    = ""
 STARSHIP_THEME_EOF
-)"
-  append_block "$dest" "$BEGIN_STARSHIP" "$END_STARSHIP" "$body"
+
+  if [[ -f "$dest" ]] && cmp -s "$tmp" "$dest"; then
+    rm -f "$tmp"
+    ok "starship config já atualizado em ${dest}"
+    return 0
+  fi
+  if [[ -f "$dest" ]]; then
+    local backup
+    backup="${dest}.bak.$(date +%Y%m%d%H%M%S)"
+    cp -p "$dest" "$backup"
+    ok "starship.toml anterior salvo em ${backup}"
+  fi
+  mv "$tmp" "$dest"
 
   if [[ "$(id -un)" != "$USER_NAME" ]]; then
     chown -R "${USER_NAME}:${USER_NAME}" "${home}/.config" 2>/dev/null || true
   fi
-  ok "starship tema Omarchy (tokyo-night) gravado em ${dest}"
+  ok "starship config gravado em ${dest}"
 }
 
 merge_herdr_keys() {

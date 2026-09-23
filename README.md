@@ -211,6 +211,8 @@ powershell -ExecutionPolicy Bypass -File .\Install-WslDevEnv.ps1 -BootstrapOnly 
 
 PATH fica em `~/.config/wsl-dev-env/env.sh`, sourced no `.profile` e no **topo** do `.bashrc` (antes do guard interativo do Ubuntu), para `wsl node` / `wsl cargo` funcionarem. Blocos marcados (`# --- wsl-dev-env begin:…`) são substituídos na reexecução, não concatenados para sempre.
 
+`~/.config/starship.toml` é gravado inteiro com o config de `guest/starship-omarchy.toml` (não é bloco marcado). Se já existir um arquivo diferente, ele é salvo antes em `starship.toml.bak.<data-hora>`; se já for igual, fica intacto.
+
 `/etc/wsl.conf` define `default=<usuário>` e `systemd=true` sem apagar chaves desconhecidas.
 
 ## Agente e automação — unattended e códigos de saída
@@ -377,7 +379,7 @@ Não rode **Docker Desktop por cima** do Colima (os dois brigam). Se preferir De
 ./Install-MacDevEnv.sh
 ```
 
-Ferramentas já instaladas são puladas; blocos de rc e `[keys]` do Herdr são substituídos.
+Ferramentas já instaladas são puladas; blocos de rc e `[keys]` do Herdr são substituídos. `~/.config/starship.toml` segue a regra de backup descrita na seção do guest.
 
 Testes (Linux ou Mac, sem instalar nada):
 
