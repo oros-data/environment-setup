@@ -120,25 +120,26 @@ TESTCALL
     exit 1
   fi
   
-  # Verify the content includes the Omarchy theme markers
-  if grep -q "Omarchy default starship prompt theme" .config/starship.toml; then
-    printf 'ok - starship.toml contains Omarchy theme\n'
+  # Verify the content includes the captain's cyan config markers
+  if grep -q 'command_timeout = 200' .config/starship.toml; then
+    printf 'ok - starship.toml contains cyan config content\n'
   else
-    printf 'FAIL: starship.toml missing Omarchy theme content\n' >&2
+    printf 'FAIL: starship.toml missing cyan config content\n' >&2
     exit 1
   fi
   
-  if grep -q "tokyo-night" .config/starship.toml; then
-    printf 'ok - starship.toml contains tokyo-night theme\n'
+  if grep -q 'bold cyan' .config/starship.toml; then
+    printf 'ok - starship.toml contains cyan styling\n'
   else
-    printf 'FAIL: starship.toml missing tokyo-night reference\n' >&2
+    printf 'FAIL: starship.toml missing cyan styling reference\n' >&2
     exit 1
   fi
   
   # Verify it has TOML sections
-  if grep -qE '^\[username\]' .config/starship.toml && \
+  if grep -qE '^\[character\]' .config/starship.toml && \
      grep -qE '^\[directory\]' .config/starship.toml && \
-     grep -qE '^\[git_branch\]' .config/starship.toml; then
+     grep -qE '^\[git_branch\]' .config/starship.toml && \
+     grep -qE '^\[git_status\]' .config/starship.toml; then
     printf 'ok - starship.toml has expected TOML sections\n'
   else
     printf 'FAIL: starship.toml missing expected TOML sections\n' >&2

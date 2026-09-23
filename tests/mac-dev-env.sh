@@ -174,16 +174,22 @@ say "brew_prefix_guess=$brew_p"
 
 merge_starship_config "$tmp"
 star="${tmp}/.config/starship.toml"
-grep -Fq 'Omarchy default starship prompt theme' "$star" || { echo "FAIL: starship tema não copiou" >&2; exit 1; }
-grep -Fq 'tokyo-night' "$star" || { echo "FAIL: starship tema tokyo-night ausente" >&2; exit 1; }
-grep -Eq '^\[username\]' "$star" || { echo "FAIL: starship tema faltando seções TOML" >&2; exit 1; }
+grep -Fq 'command_timeout = 200' "$star" || { echo "FAIL: starship config não copiou" >&2; exit 1; }
+grep -Fq 'bold cyan' "$star" || { echo "FAIL: starship config cyan styling ausente" >&2; exit 1; }
+grep -Eq '^\[character\]' "$star" || { echo "FAIL: starship config faltando seções TOML" >&2; exit 1; }
 grep -Fq 'mac-dev-env begin:starship' "$star" || { echo "FAIL: starship faltando block markers" >&2; exit 1; }
 printf '\n[custom]\nvalue = 1\n' >> "$star"
 merge_starship_config "$tmp"
 grep -Fq 'value = 1' "$star" || { echo "FAIL: merge apagou seção [custom]" >&2; exit 1; }
-n="$(grep -c 'Omarchy default starship prompt theme' "$star" || true)"
-[[ "$n" -eq 1 ]] || { echo "FAIL: merge duplicou tema (n=$n)" >&2; exit 1; }
+n="$(grep -c 'command_timeout = 200' "$star" || true)"
+[[ "$n" -eq 1 ]] || { echo "FAIL: merge duplicou config (n=$n)" >&2; exit 1; }
 say "merge_starship_config embedded theme works and is idempotent"
+
+embed_tmp="$(mktemp)"
+sed -n '/body="$(cat <<'\''STARSHIP_THEME_EOF'\''/,/^STARSHIP_THEME_EOF$/p' "$SCRIPT" | sed '1d;$d' > "$embed_tmp"
+diff -q "${ROOT}/guest/starship-omarchy.toml" "$embed_tmp" >/dev/null 2>&1 || { echo "FAIL: starship config embutido difere de guest/starship-omarchy.toml" >&2; exit 1; }
+rm -f "$embed_tmp"
+say "starship embutido no Install-MacDevEnv.sh bate com guest/starship-omarchy.toml"
 HELPER
 )" || {
   printf '%s\n' "$helper_out" >&2
